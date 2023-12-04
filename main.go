@@ -21,7 +21,8 @@ type Comment struct {
 	Id      int
 	Content string
 	Author  string
-	Post    *Post
+	post_id int
+	// Post    *Post
 }
 
 var Db *sql.DB
@@ -35,11 +36,11 @@ func init() {
 }
 
 func (comment *Comment) Create() (err error) {
-	if comment.Post == nil {
+	if comment.post_id == 0 {
 		err = errors.New("投稿が見つかりません")
 		return
 	}
-	err = Db.QueryRow("insert into comments (content,author,post_id) values ($1,$2,$3) returning id", comment.Content, comment.Author, comment.Post.Id).Scan(&comment.Id)
+	err = Db.QueryRow("insert into comments (content,author,post_id) values ($1,$2,$3) returning id", comment.Content, comment.Author, comment.post_id).Scan(&comment.Id)
 	return
 }
 
@@ -48,12 +49,13 @@ func GetPost(id int) (post Post, err error) {
 	post.Comments = []Comment{}
 
 	err = Db.QueryRow("select id,content,author from posts where id = $1", id).Scan(&post.Id, &post.Content, &post.Author)
-	rows, err := Db.Query("select id,content, author from comments")
+	rows, err := Db.Query("select id,content, author from comments where post_id = $1", post.Id)
 	if err != nil {
+		fmt.Print(err)
 		return
 	}
 	for rows.Next() {
-		comment := Comment{Post: &post}
+		comment := Comment{post_id: post.Id}
 		err = rows.Scan(&comment.Id, &comment.Content, &comment.Author)
 		if err != nil {
 			return
@@ -104,6 +106,7 @@ func getpost(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"post": post})
 }
+
 func createpost(c *gin.Context) {
 
 	content := c.Query("content")
@@ -118,15 +121,14 @@ func createcomment(c *gin.Context) {
 	post_id_s := c.Query("post_id")
 	post_id, _ := strconv.Atoi(post_id_s)
 	post, _ := GetPost(post_id)
-
-	comment := Comment{Content: content, Author: author, Post: &post}
+	comment := Comment{Content: content, Author: author, post_id: post.Id}
 	comment.Create()
-
 }
+
 func main() {
 	router := gin.Default()
 	router.GET("/getpost", getpost)
 	router.GET("/createpost", createpost)
-
+	router.GET("/createcomment", createcomment)
 	router.Run("localhost:8080")
 }
