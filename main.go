@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
@@ -127,6 +128,33 @@ func createcomment(c *gin.Context) {
 
 func main() {
 	router := gin.Default()
+
+	router.Use(cors.New(cors.Config{
+		// アクセスを許可したいアクセス元
+		AllowOrigins: []string{
+			"http://localhost:3000",
+		},
+		// アクセスを許可したいHTTPメソッド(以下の例だとPUTやDELETEはアクセスできません)
+		AllowMethods: []string{
+			"POST",
+			"GET",
+		},
+		// 許可したいHTTPリクエストヘッダ
+		AllowHeaders: []string{
+			"Access-Control-Allow-Credentials",
+			"Access-Control-Allow-Headers",
+			"Access-Control-Allow-Origin",
+			"Content-Type",
+			"Content-Length",
+			"Accept-Encoding",
+			"Authorization",
+		},
+		// cookieなどの情報を必要とするかどうか
+		AllowCredentials: false,
+		// preflightリクエストの結果をキャッシュする時間
+
+	}))
+
 	router.GET("/getpost", getpost)
 	router.GET("/createpost", createpost)
 	router.GET("/createcomment", createcomment)
