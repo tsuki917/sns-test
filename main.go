@@ -66,6 +66,28 @@ func GetPost(id int) (post Post, err error) {
 	rows.Close()
 	return
 }
+func GetAllPost() (posts []Post, err error) {
+	posts = []Post{}
+	posts_rows, err := Db.Query("select id,content,author from posts")
+	// rows, err := Db.Query("select id,content, author from comments where post_id = $1", post.Id)
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+	for posts_rows.Next() {
+		post := Post{}
+		err = posts_rows.Scan(&post.Id, &post.Content, &post.Author)
+		if err != nil {
+			fmt.Print(err)
+			return
+		}
+		posts = append(posts, post)
+	}
+	posts_rows.Close()
+	fmt.Print(posts)
+
+	return
+}
 
 // func (post *Post) Create() (err error) {
 // 	fmt.Println("Creating...")
@@ -98,14 +120,25 @@ func (post *Post) Delete() (err error) {
 func getpost(c *gin.Context) {
 	id_s := c.Query("id") // URLパラメータからidを取得する
 	id, _ := strconv.Atoi(id_s)
-
 	fmt.Print("getpost")
+	fmt.Print(id)
+
 	post, err := GetPost(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"post": post})
+
+}
+
+func getallpost(c *gin.Context) {
+	posts, err := GetAllPost()
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"posts": posts})
 }
 
 func createpost(c *gin.Context) {
@@ -156,6 +189,8 @@ func main() {
 	}))
 
 	router.GET("/getpost", getpost)
+	router.GET("/getallpost", getallpost)
+
 	router.GET("/createpost", createpost)
 	router.GET("/createcomment", createcomment)
 	router.Run("localhost:8080")
