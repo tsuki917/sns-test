@@ -41,8 +41,10 @@ func init() {
 	}
 
 	passwrd := os.Getenv("PSQL_PASSWORD")
+	dbname := os.Getenv("DB_NAME")
 	var err error
-	Db, err = sql.Open("postgres", "user=db-test01 dbname=db-sns-test password="+passwrd+" sslmode=disable")
+	DB_URI := fmt.Sprintf("user=db-test01 dbname=%s password=%s sslmode=disable", dbname, passwrd)
+	Db, err = sql.Open("postgres", DB_URI)
 	if err != nil {
 		panic(err)
 	}
