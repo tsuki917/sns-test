@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -38,8 +39,10 @@ func init() {
 	if err_env != nil {
 		fmt.Printf("読み込み出来ませんでした: %v", err_env)
 	}
+
+	passwrd := os.Getenv("PSQL_PASSWORD")
 	var err error
-	Db, err = sql.Open("postgres", "user=db-test01 dbname=db-sns-test password=Itsuki0530 sslmode=disable")
+	Db, err = sql.Open("postgres", "user=db-test01 dbname=db-sns-test password="+passwrd+" sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
