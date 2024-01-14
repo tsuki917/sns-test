@@ -5,9 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -15,41 +19,43 @@ type Post struct {
 	Id       int
 	Content  string
 	Author   string
+	Day_post string
 	Comments []Comment
 }
 type Comment struct {
-	Id      int
-	Content string
-	Author  string
-	post_id int
-	// Post    *Post
+	Id          int
+	Content     string
+	Author      string
+	post_id     int
+	Day_comment string
 }
 
 var Db *sql.DB
 
 func init() {
+	err_env := godotenv.Load(".env")
+
+	// もし err がnilではないなら、"読み込み出来ませんでした"が出力されます。
+	if err_env != nil {
+		fmt.Printf("読み込み出来ませんでした: %v", err_env)
+	}
+
+	passwrd := os.Getenv("PSQL_PASSWORD")
+	dbname := os.Getenv("DB_NAME")
 	var err error
-	Db, err = sql.Open("postgres", "user=db-test01 dbname=db-sns-test password=Itsuki0530 sslmode=disable")
+	DB_URI := fmt.Sprintf("user=db-test01 dbname=%s password=%s sslmode=disable", dbname, passwrd)
+	Db, err = sql.Open("postgres", DB_URI)
 	if err != nil {
 		panic(err)
 	}
-}
-
-func (comment *Comment) Create() (err error) {
-	if comment.post_id == 0 {
-		err = errors.New("投稿が見つかりません")
-		return
-	}
-	err = Db.QueryRow("insert into comments (content,author,post_id) values ($1,$2,$3) returning id", comment.Content, comment.Author, comment.post_id).Scan(&comment.Id)
-	return
 }
 
 func GetPost(id int) (post Post, err error) {
 	post = Post{}
 	post.Comments = []Comment{}
 
-	err = Db.QueryRow("select id,content,author from posts where id = $1", id).Scan(&post.Id, &post.Content, &post.Author)
-	rows, err := Db.Query("select id,content, author from comments where post_id = $1", post.Id)
+	err = Db.QueryRow("select id,content,author,day_post from posts where id = $1", id).Scan(&post.Id, &post.Content, &post.Author, &post.Day_post)
+	rows, err := Db.Query("select id,content, author,day_commnet from comments where post_id = $1", post.Id)
 	if err != nil {
 		fmt.Print(err)
 		return
@@ -66,24 +72,57 @@ func GetPost(id int) (post Post, err error) {
 	return
 }
 
-// func (post *Post) Create() (err error) {
-// 	fmt.Println("Creating...")
+func GetAllPost() (posts []Post, err error) {
+	posts = []Post{}
+	posts_rows, err := Db.Query("select id,content,author,day_post from posts")
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+	for posts_rows.Next() {
+		post := Post{}
+		err = posts_rows.Scan(&post.Id, &post.Content, &post.Author, &post.Day_post)
+		if err != nil {
+			fmt.Print(err)
+			return
+		}
+		rows, err_c := Db.Query("select id,content, author,day_comment from comments where post_id = $1", post.Id)
+		if err != nil {
+			fmt.Print(err_c)
+			return
+		}
+		for rows.Next() {
+			comment := Comment{post_id: post.Id}
+			err = rows.Scan(&comment.Id, &comment.Content, &comment.Author, &comment.Day_comment)
+			if err != nil {
+				return
+			}
+			post.Comments = append(post.Comments, comment)
+		}
+		rows.Close()
+		posts = append(posts, post)
+	}
+	posts_rows.Close()
 
-//		statement := "insert into posts (content,author) values ($1,$2) returning id"
-//		stmt, err := Db.Prepare(statement)
-//		println("stmt")
-//		println(stmt)
-//		if err != nil {
-//			return
-//		}
-//		defer stmt.Close()
-//		err = stmt.QueryRow(post.Content, post.Author).Scan(&post.Id)
-//		return
-//	}
-func (post *Post) Create() (err error) {
-	err = Db.QueryRow("insert into posts (content,author) values ($1,$2) returning id", post.Content, post.Author).Scan(&post.Id)
 	return
 }
+
+func (post *Post) Create() (err error) {
+	err = Db.QueryRow("insert into posts (content,author,day_post) values ($1,$2,$3) returning id", post.Content, post.Author, time.Now()).Scan(&post.Id)
+	return
+}
+
+func (comment *Comment) Create() (err error) {
+	if comment.post_id == 0 {
+		err = errors.New("投稿が見つかりません")
+		return
+	}
+
+	err = Db.QueryRow("insert into comments (content,author,post_id,day_comment) values ($1,$2,$3,$4) returning id", comment.Content, comment.Author, comment.post_id, time.Now()).Scan(&comment.Id)
+
+	return
+}
+
 func (post *Post) Update() (err error) {
 	_, err = Db.Exec("update posts set content = $2,author = $3 where id = $1", post.Id, post.Content, post.Author)
 	return
@@ -97,8 +136,6 @@ func (post *Post) Delete() (err error) {
 func getpost(c *gin.Context) {
 	id_s := c.Query("id") // URLパラメータからidを取得する
 	id, _ := strconv.Atoi(id_s)
-
-	fmt.Print("getpost")
 	post, err := GetPost(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -107,8 +144,17 @@ func getpost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"post": post})
 }
 
-func createpost(c *gin.Context) {
+func getallpost(c *gin.Context) {
+	posts, err := GetAllPost()
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+	fmt.Print(posts)
+	c.JSON(http.StatusOK, gin.H{"posts": posts})
+}
 
+func createpost(c *gin.Context) {
 	content := c.Query("content")
 	author := c.Query("author")
 	post := Post{Content: content, Author: author}
@@ -127,8 +173,37 @@ func createcomment(c *gin.Context) {
 
 func main() {
 	router := gin.Default()
+
+	router.Use(cors.New(cors.Config{
+		// アクセスを許可したいアクセス元
+		AllowOrigins: []string{
+			"http://localhost:3000",
+		},
+		// アクセスを許可したいHTTPメソッド(以下の例だとPUTやDELETEはアクセスできません)
+		AllowMethods: []string{
+			"POST",
+			"GET",
+		},
+		// 許可したいHTTPリクエストヘッダ
+		AllowHeaders: []string{
+			"Access-Control-Allow-Credentials",
+			"Access-Control-Allow-Headers",
+			"Access-Control-Allow-Origin",
+			"Content-Type",
+			"Content-Length",
+			"Accept-Encoding",
+			"Authorization",
+		},
+		// cookieなどの情報を必要とするかどうか
+		AllowCredentials: false,
+		// preflightリクエストの結果をキャッシュする時間
+
+	}))
+
 	router.GET("/getpost", getpost)
+	router.GET("/getallpost", getallpost)
 	router.GET("/createpost", createpost)
 	router.GET("/createcomment", createcomment)
 	router.Run("localhost:8080")
+
 }
