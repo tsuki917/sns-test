@@ -4,36 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"test-sns/controllers"
+	"test-sns/middlewares"
 	"test-sns/models"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
-
-// var Db *sql.DB
-
-// func init() {
-// 	var err error
-// 	Db, err = sql.Open("postgres", "user=db-test01 dbname=db-sns-test password=Itsuki0530 sslmode=disable")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// }
-
-// func (post *Post) Create() (err error) {
-// 	fmt.Println("Creating...")
-
-//		statement := "insert into posts (content,author) values ($1,$2) returning id"
-//		stmt, err := Db.Prepare(statement)
-//		println("stmt")
-//		println(stmt)
-//		if err != nil {
-//			return
-//		}
-//		defer stmt.Close()
-//		err = stmt.QueryRow(post.Content, post.Author).Scan(&post.Id)
-//		return
-//	}
 
 func getpost(c *gin.Context) {
 	id_s := c.Query("id") // URLパラメータからidを取得する
@@ -48,17 +25,17 @@ func getpost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"post": post})
 }
 
-// func createpost(c *gin.Context) {
+func createpost(c *gin.Context) {
 
-// 	// content := c.Query("content")
-// 	// author := c.Query("author")
-// 	post := models.Post{Content: "content", Author: "author"}
-// 	err := models.DB.Create(&post).Error
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-// }
+	content := c.Query("content")
+	author := c.Query("author")
+	post := models.Post{Content: content, Author: author}
+	err := models.DB.Create(&post).Error
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+}
 
 func createcomment(c *gin.Context) {
 	content := c.Query("content")
@@ -84,8 +61,15 @@ func getallpost(c *gin.Context) {
 func main() {
 	router := gin.Default()
 	models.ConnectDataBase()
+	public := router.Group("/api")
+
+	public.POST("/register", controllers.Register)
+	public.POST("/login", controllers.Login)
 	router.GET("/getpost", getpost)
-	// router.GET("/createpost", createpost)
+	protected := router.Group("/api/admin")
+	protected.Use(middlewares.JwtAuthMiddleware())
+	protected.GET("/user", controllers.CurrentUser)
+	router.GET("/createpost", createpost)
 	router.GET("/createcomment", createcomment)
 	router.GET("/getallpost", getallpost)
 
