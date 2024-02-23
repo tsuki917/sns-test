@@ -25,8 +25,17 @@ func getpost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"post": post})
 }
 
-func createpost(c *gin.Context) {
+func getallpost(c *gin.Context) {
+	posts, err := GetAllPost()
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+	fmt.Print(posts)
+	c.JSON(http.StatusOK, gin.H{"posts": posts})
+}
 
+func createpost(c *gin.Context) {
 	content := c.Query("content")
 	author := c.Query("author")
 	post := models.Post{Content: content, Author: author}
@@ -74,4 +83,5 @@ func main() {
 	router.GET("/getallpost", getallpost)
 
 	router.Run("localhost:8080")
+
 }
