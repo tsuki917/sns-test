@@ -1,12 +1,12 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"test-sns/models"
 	"test-sns/utils/token"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 )
 
@@ -14,7 +14,7 @@ type RegisterInput struct {
 	gorm.Model
 	Username string `json:"username" `
 	Password string `json:"password" binding:"required"`
-	UserId   string `json:"userid"`
+	UserTag  string `json:"usertag" binding:"required"`
 	Email    string `json:"email" binding:"required"`
 }
 
@@ -26,9 +26,8 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	user := models.User{Username: input.Username, Password: input.Password, UserId: input.UserId, Email: input.Email}
+	user := models.User{Username: input.Username, Password: input.Password, UserTag: uuid.New().String(), Email: input.Email}
 	user.BeforeSave()
-	fmt.Print(user)
 	user, err := user.Save()
 
 	if err != nil {
@@ -54,7 +53,7 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	fmt.Print(input.Email, input.Password)
+
 	token, err := models.GenerateToken(input.Email, input.Password)
 
 	if err != nil {
