@@ -27,8 +27,7 @@ func getpost(c *gin.Context) {
 
 func createpost(c *gin.Context) {
 	content := c.Query("content")
-	author := c.Query("author")
-	post := models.Post{Content: content, Author: author}
+	post := models.Post{Content: content}
 	err := models.DB.Create(&post).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -36,20 +35,20 @@ func createpost(c *gin.Context) {
 	}
 }
 
-func createcomment(c *gin.Context) {
-	content := c.Query("content")
-	author := c.Query("author")
-	post_id_s := c.Query("post_id")
-	post_id, _ := strconv.Atoi(post_id_s)
-	post, _ := models.GetPost(post_id)
-	comment := models.Comment{Content: content, Author: author, Post_id: int(post.ID)}
-	// comment.Create()
-	err := models.DB.Create(&comment).Error
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-}
+// func createcomment(c *gin.Context) {
+// 	content := c.Query("content")
+// 	author := c.Query("author")
+// 	post_id_s := c.Query("post_id")
+// 	post_id, _ := strconv.Atoi(post_id_s)
+// 	post, _ := models.GetPost(post_id)
+// 	comment := models.Comment{Content: content, Author: author, Post_id: int(post.ID)}
+// 	// comment.Create()
+// 	err := models.DB.Create(&comment).Error
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 		return
+// 	}
+// }
 
 func getallpost(c *gin.Context) {
 	posts, _ := models.GetAllPost()
@@ -69,7 +68,7 @@ func main() {
 	protected.Use(middlewares.JwtAuthMiddleware())
 	protected.GET("/user", controllers.CurrentUser)
 	router.GET("/createpost", createpost)
-	router.GET("/createcomment", createcomment)
+	// router.GET("/createcomment", createcomment)
 	router.GET("/getallpost", getallpost)
 
 	router.Run("localhost:8080")

@@ -7,5 +7,5 @@ type Comment struct {
 	Content string
 	Author  string
 	// Post    *Post
-	Post_id int
+	PostId int
 }
