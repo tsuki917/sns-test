@@ -44,10 +44,10 @@ func (u User) PrepareOutput() User {
 	return u
 }
 
-func GenerateToken(username string, password string) (string, error) {
+func GenerateToken(email string, password string) (string, error) {
 	var user User
 
-	err := DB.Where("username = ?", username).First(&user).Error
+	err := DB.Where("email = ?", email).First(&user).Error
 
 	if err != nil {
 		return "", err

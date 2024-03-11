@@ -12,9 +12,9 @@ import (
 
 type RegisterInput struct {
 	gorm.Model
-	Username string `json:"username" binding:"required"`
+	Username string `json:"username" `
 	Password string `json:"password" binding:"required"`
-	UserId   string `json:"userid" binding:"required"`
+	UserId   string `json:"userid"`
 	Email    string `json:"email" binding:"required"`
 }
 
@@ -42,7 +42,7 @@ func Register(c *gin.Context) {
 }
 
 type LoginInput struct {
-	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -50,11 +50,12 @@ func Login(c *gin.Context) {
 	var input LoginInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
+		fmt.Println("should bad")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	token, err := models.GenerateToken(input.Username, input.Password)
+	fmt.Print(input.Email, input.Password)
+	token, err := models.GenerateToken(input.Email, input.Password)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
