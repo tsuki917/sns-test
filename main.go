@@ -8,6 +8,7 @@ import (
 	"test-sns/middlewares"
 	"test-sns/models"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
@@ -53,12 +54,37 @@ func createpost(c *gin.Context) {
 func getallpost(c *gin.Context) {
 	posts, _ := models.GetAllPost()
 
-	c.JSON(http.StatusOK, gin.H{"post": posts})
+	c.JSON(http.StatusOK, gin.H{"posts": posts})
 }
 
 func main() {
 	router := gin.Default()
 	models.ConnectDataBase()
+	router.Use(cors.New(cors.Config{
+		// アクセスを許可したいアクセス元
+		AllowOrigins: []string{
+			"http://localhost:3000",
+		},
+		// アクセスを許可したいHTTPメソッド(以下の例だとPUTやDELETEはアクセスできません)
+		AllowMethods: []string{
+			"POST",
+			"GET",
+		},
+		// 許可したいHTTPリクエストヘッダ
+		AllowHeaders: []string{
+			"Access-Control-Allow-Credentials",
+			"Access-Control-Allow-Headers",
+			"Access-Control-Allow-Origin",
+			"Content-Type",
+			"Content-Length",
+			"Accept-Encoding",
+			"Authorization",
+		},
+		// cookieなどの情報を必要とするかどうか
+		AllowCredentials: false,
+		// preflightリクエストの結果をキャッシュする時間
+
+	}))
 	public := router.Group("/api")
 
 	public.POST("/register", controllers.Register)
