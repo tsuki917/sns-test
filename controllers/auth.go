@@ -49,7 +49,6 @@ func Login(c *gin.Context) {
 	var input LoginInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		fmt.Println("should bad")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
