@@ -1,4 +1,4 @@
-module test-sns
+module sns-test
 
 go 1.20
 
@@ -9,7 +9,6 @@ require (
 )
 
 require (
-
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/bytedance/sonic v1.10.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect

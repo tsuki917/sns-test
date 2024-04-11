@@ -1,32 +1,30 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
-	"test-sns/models"
-	"test-sns/utils/token"
+	"sns-test/models"
+	"sns-test/utils/token"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jinzhu/gorm"
 )
 
 type RegisterInput struct {
-	gorm.Model
-	Username string `json:"username" `
+	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
-	UserTag  string `json:"usertag" binding:"required"`
-	Email    string `json:"email" binding:"required"`
 }
 
 func Register(c *gin.Context) {
 	var input RegisterInput
-
+	fmt.Print("input")
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user := models.User{Username: input.Username, Password: input.Password, UserTag: uuid.New().String(), Email: input.Email}
+	user := models.User{Username: input.Username, Password: input.Password, UserTag: uuid.New().String()}
+	fmt.Println(user)
 	user.BeforeSave()
 	user, err := user.Save()
 
@@ -41,7 +39,7 @@ func Register(c *gin.Context) {
 }
 
 type LoginInput struct {
-	Email    string `json:"email" binding:"required"`
+	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -53,7 +51,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	token, err := models.GenerateToken(input.Email, input.Password)
+	token, err := models.GenerateToken(input.Username, input.Password)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -76,7 +74,6 @@ func CurrentUser(c *gin.Context) {
 	var user models.User
 
 	err = models.DB.First(&user, userId).Error
-
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
