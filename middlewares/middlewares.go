@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"net/http"
-	"test-sns/utils/token"
+	"sns-test/utils/token"
 
 	"github.com/gin-gonic/gin"
 )

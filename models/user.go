@@ -12,9 +12,15 @@ type User struct {
 	gorm.Model
 	Username string `gorm:"size:255;not null;unique" json:"username"`
 	Password string `gorm:"size:255;not null;" json:"password"`
-	Email    string `gorm:"size:255;not null;unique" json:"email"`
 	UserTag  string `gorm:"size:255;not null;" json:"usertag"`
 	ImgPath  string `gorm:"size:255;" json:"img_path"`
+}
+
+type User_Post struct {
+	Username string `gorm:"size:255;not null;unique" json:"username"`
+	UserTag  string `gorm:"size:255;not null;" json:"usertag"`
+	ImgPath  string `gorm:"size:255;" json:"img_path"`
+	ID       uint   `gorm:"size:255;" json:"id"`
 }
 
 func (u User) Save() (User, error) {
@@ -48,7 +54,7 @@ func (u User) PrepareOutput() User {
 func GenerateToken(email string, password string) (string, error) {
 	var user User
 
-	err := DB.Where("email = ?", email).First(&user).Error
+	err := DB.Where("username = ?", email).First(&user).Error
 
 	if err != nil {
 		return "", err

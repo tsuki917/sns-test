@@ -31,4 +31,8 @@ func ConnectDataBase() {
 	DB.AutoMigrate(&User{})
 	DB.AutoMigrate(&Post{})
 	DB.AutoMigrate(&Comment{})
+	DB.AutoMigrate(&Tag{})
+	DB.AutoMigrate(&Follow{})
+	DB.AutoMigrate(&Favo{})
+
 }
