@@ -2,6 +2,7 @@ package models
 
 import (
 	"net/http"
+	fire "sns-test/utils/firebase"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -49,15 +50,23 @@ func GetAllPost() (posts []Post, err error) {
 
 func Createpost(c *gin.Context) {
 	type Input struct {
-		Content string
-		UserId  int
+		Content    string
+		UserId     int
+		FileLength int64
 	}
 	var input Input
 
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.Bind(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	var lastValue int64
+
+	// シーケンス番号を取得するクエリを実行
+	DB.Raw("SELECT last_value FROM posts_id_seq").Scan(&lastValue)
+	lastValue += 1
+	// fire.ImagefileUP(c, input.FileLength, lastValue)
+	fire.ImagefileUP(c, input.FileLength, lastValue)
 	post := Post{Content: input.Content, UserId: input.UserId}
 	err := DB.Create(&post).Error
 	if err != nil {
