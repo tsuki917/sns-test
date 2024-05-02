@@ -84,6 +84,7 @@ func getallpost(c *gin.Context) {
 
 func main() {
 	router := gin.Default()
+
 	models.ConnectDataBase()
 	router.Use(cors.New(cors.Config{
 		// アクセスを許可したいアクセス元
@@ -124,5 +125,4 @@ func main() {
 	router.POST("/addfavo", models.AddFavo)
 	router.POST("/deletefavo", models.DeleteFavo)
 	router.Run("localhost:8080")
-
 }
