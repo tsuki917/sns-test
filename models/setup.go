@@ -34,5 +34,6 @@ func ConnectDataBase() {
 	DB.AutoMigrate(&Tag{})
 	DB.AutoMigrate(&Follow{})
 	DB.AutoMigrate(&Favo{})
+	DB.AutoMigrate(&PostImg{})
 
 }

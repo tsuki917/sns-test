@@ -52,9 +52,10 @@ func getallpost(c *gin.Context) {
 		return
 	}
 	type Thread struct {
-		Post   models.Post
-		User   models.User_Post
-		IsFavo bool
+		Post      models.Post
+		User      models.User_Post
+		IsFavo    bool
+		ImageURLs []string
 	}
 	threads := []Thread{}
 	for _, post := range posts {
@@ -71,10 +72,12 @@ func getallpost(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
 		thread.User.Username = u.Username
 		thread.User.UserTag = u.UserTag
 		thread.User.ImgPath = u.ImgPath
 		thread.User.ID = u.ID
+		thread.ImageURLs = models.GetImageURL(int(thread.Post.ID))
 		thread.IsFavo = models.IsFavo(uint(client_userid), post.ID)
 		threads = append(threads, thread)
 	}
@@ -113,6 +116,7 @@ func main() {
 	}))
 	public := router.Group("/api")
 	// models.AddFavo(2, 1)
+	fmt.Println("firebase getpostimg")
 	protected := router.Group("/api/admin")
 	protected.Use(middlewares.JwtAuthMiddleware())
 	public.POST("/register", controllers.Register)
