@@ -10,15 +10,16 @@ import (
 )
 
 func SavePostImg(filedata []byte, filePath string) error {
-	fmt.Println("Firebase setup")
-
 	config := &firebase.Config{
 		StorageBucket: "sns-image-storage.appspot.com",
 	}
 	ctx := context.Background()
 	t := option.WithCredentialsFile("sns-image-storage.json")
 	app, err := firebase.NewApp(ctx, config, t)
+	fmt.Println("Firebase setup")
+
 	if err != nil {
+
 		fmt.Print(err)
 		return err
 	}
@@ -34,7 +35,7 @@ func SavePostImg(filedata []byte, filePath string) error {
 		return err
 	}
 	wc := bucket.Object(filePath).NewWriter(ctx)
-
+	wc.CacheControl = "no-cache, no-store, must-revalidate"
 	_, err = wc.Write(filedata)
 
 	if err != nil {
@@ -55,6 +56,31 @@ func SavePostImg(filedata []byte, filePath string) error {
 
 	fmt.Printf("File %s uploaded and set to public\n", filePath)
 	return nil
+}
+
+func DeleteIconImg(filePath string) {
+	config := &firebase.Config{
+		StorageBucket: "sns-image-storage.appspot.com",
+	}
+	ctx := context.Background()
+	t := option.WithCredentialsFile("sns-image-storage.json")
+	app, err := firebase.NewApp(ctx, config, t)
+	if err != nil {
+		fmt.Print(err)
+	}
+	client, err := app.Storage(ctx)
+	if err != nil {
+		fmt.Print(err)
+	}
+	bucket, err := client.DefaultBucket()
+	if err != nil {
+		fmt.Print(err)
+	}
+	ob := bucket.Object(filePath)
+	err = ob.Delete(ctx)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 // func GetPostImg(PostId int, FileName string) (baseURL string) {

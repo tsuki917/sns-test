@@ -40,6 +40,31 @@ func getpost(c *gin.Context) {
 // 	}
 // }
 
+func updateUser(c *gin.Context) {
+	fmt.Println("updateUser")
+	u := models.User{}
+	type input struct {
+		Name         string
+		Tag          string
+		User_id      int
+		Prof         string
+		IsChangeFile bool
+	}
+	var data input
+	if err := c.Bind(&data); err != nil {
+		fmt.Println(err)
+		fmt.Println(data)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	u.Username = data.Name
+	u.UserTag = data.Tag
+	u.Profile = data.Prof
+
+	u.UpdateUser(data.User_id, c, data.IsChangeFile)
+
+}
+
 func getallpost(c *gin.Context) {
 	posts, err := models.GetAllPost()
 	client_userid, _ := strconv.ParseUint(c.Query("userid"), 10, 64)
@@ -84,6 +109,58 @@ func getallpost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"threads": threads})
 }
+func getallmypost(c *gin.Context) {
+	posts, err := models.GetAllPost()
+	client_userid, _ := strconv.ParseUint(c.Query("userid"), 10, 64)
+
+	fmt.Println("client_userid")
+	fmt.Println(client_userid)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	type Thread struct {
+		Post      models.Post
+		User      models.User_Post
+		IsFavo    bool
+		ImageURLs []string
+	}
+	threads := []Thread{}
+	for _, post := range posts {
+		thread := Thread{}
+		thread.Post = post
+		u := models.User{}
+		err := models.DB.Where("id=?", post.UserId).First(&u).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		err = models.DB.Model(&models.Favo{}).Where("post_id=?", post.ID).Count(&thread.Post.FavoNum).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		thread.User.Username = u.Username
+		thread.User.UserTag = u.UserTag
+		thread.User.ImgPath = u.ImgPath
+		thread.User.ID = u.ID
+		thread.ImageURLs = models.GetImageURL(int(thread.Post.ID))
+		thread.IsFavo = models.IsFavo(uint(client_userid), post.ID)
+		threads = append(threads, thread)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"threads": threads})
+}
+
+func getUser(c *gin.Context) {
+	id_s := c.Query("id") // URLパラメータからidを取得する
+	id, _ := strconv.Atoi(id_s)
+	user := models.GetOtherUser(id)
+	c.JSON(http.StatusOK, gin.H{"user": user})
+
+}
 
 func main() {
 	router := gin.Default()
@@ -114,6 +191,7 @@ func main() {
 		// preflightリクエストの結果をキャッシュする時間
 
 	}))
+
 	public := router.Group("/api")
 	// models.AddFavo(2, 1)
 	fmt.Println("firebase getpostimg")
@@ -124,8 +202,11 @@ func main() {
 	router.GET("/getpost", getpost)
 	protected.GET("/user", controllers.CurrentUser)
 	router.POST("/createpost", models.Createpost)
+	router.POST("/updateuser", updateUser)
+	router.GET("/user", getUser)
 	// router.GET("/createcomment", createcomment)
 	router.GET("/getallpost", getallpost)
+	router.GET("/getallmypost", getallmypost)
 	router.POST("/addfavo", models.AddFavo)
 	router.POST("/deletefavo", models.DeleteFavo)
 	router.Run("localhost:8080")
