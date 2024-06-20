@@ -1,105 +1,24 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
+	"sns-test/controllers"
+	"sns-test/middlewares"
+	"sns-test/models"
 	"strconv"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
-
-type Post struct {
-	Id       int
-	Content  string
-	Author   string
-	Comments []Comment
-}
-type Comment struct {
-	Id      int
-	Content string
-	Author  string
-	post_id int
-	// Post    *Post
-}
-
-var Db *sql.DB
-
-func init() {
-	var err error
-	Db, err = sql.Open("postgres", "user=db-test01 dbname=db-sns-test password=Itsuki0530 sslmode=disable")
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (comment *Comment) Create() (err error) {
-	if comment.post_id == 0 {
-		err = errors.New("投稿が見つかりません")
-		return
-	}
-	err = Db.QueryRow("insert into comments (content,author,post_id) values ($1,$2,$3) returning id", comment.Content, comment.Author, comment.post_id).Scan(&comment.Id)
-	return
-}
-
-func GetPost(id int) (post Post, err error) {
-	post = Post{}
-	post.Comments = []Comment{}
-
-	err = Db.QueryRow("select id,content,author from posts where id = $1", id).Scan(&post.Id, &post.Content, &post.Author)
-	rows, err := Db.Query("select id,content, author from comments where post_id = $1", post.Id)
-	if err != nil {
-		fmt.Print(err)
-		return
-	}
-	for rows.Next() {
-		comment := Comment{post_id: post.Id}
-		err = rows.Scan(&comment.Id, &comment.Content, &comment.Author)
-		if err != nil {
-			return
-		}
-		post.Comments = append(post.Comments, comment)
-	}
-	rows.Close()
-	return
-}
-
-// func (post *Post) Create() (err error) {
-// 	fmt.Println("Creating...")
-
-//		statement := "insert into posts (content,author) values ($1,$2) returning id"
-//		stmt, err := Db.Prepare(statement)
-//		println("stmt")
-//		println(stmt)
-//		if err != nil {
-//			return
-//		}
-//		defer stmt.Close()
-//		err = stmt.QueryRow(post.Content, post.Author).Scan(&post.Id)
-//		return
-//	}
-func (post *Post) Create() (err error) {
-	err = Db.QueryRow("insert into posts (content,author) values ($1,$2) returning id", post.Content, post.Author).Scan(&post.Id)
-	return
-}
-func (post *Post) Update() (err error) {
-	_, err = Db.Exec("update posts set content = $2,author = $3 where id = $1", post.Id, post.Content, post.Author)
-	return
-}
-
-func (post *Post) Delete() (err error) {
-	_, err = Db.Exec("delete from posts where id = $1", post.Id)
-	return
-}
 
 func getpost(c *gin.Context) {
 	id_s := c.Query("id") // URLパラメータからidを取得する
 	id, _ := strconv.Atoi(id_s)
 
 	fmt.Print("getpost")
-	post, err := GetPost(id)
+	post, err := models.GetPost(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -107,28 +26,188 @@ func getpost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"post": post})
 }
 
-func createpost(c *gin.Context) {
+// func createcomment(c *gin.Context) {
+// 	author := c.Query("author")
+// 	post_id_s := c.Query("post_id")
+// 	post_id, _ := strconv.Atoi(post_id_s)
+// 	post, _ := models.GetPost(post_id)
+// 	comment := models.Comment{Content: content, Author: author, Post_id: int(post.ID)}
+// 	// comment.Create()
+// 	err := models.DB.Create(&comment).Error
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 		return
+// 	}
+// }
 
-	content := c.Query("content")
-	author := c.Query("author")
-	post := Post{Content: content, Author: author}
-	post.Create()
+func updateUser(c *gin.Context) {
+	fmt.Println("updateUser")
+	u := models.User{}
+	type input struct {
+		Name         string
+		Tag          string
+		User_id      int
+		Prof         string
+		IsChangeFile bool
+	}
+	var data input
+	if err := c.Bind(&data); err != nil {
+		fmt.Println(err)
+		fmt.Println(data)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	u.Username = data.Name
+	u.UserTag = data.Tag
+	u.Profile = data.Prof
+
+	u.UpdateUser(data.User_id, c, data.IsChangeFile)
+
 }
 
-func createcomment(c *gin.Context) {
-	content := c.Query("content")
-	author := c.Query("author")
-	post_id_s := c.Query("post_id")
-	post_id, _ := strconv.Atoi(post_id_s)
-	post, _ := GetPost(post_id)
-	comment := Comment{Content: content, Author: author, post_id: post.Id}
-	comment.Create()
+func getallpost(c *gin.Context) {
+	posts, err := models.GetAllPost()
+	client_userid, _ := strconv.ParseUint(c.Query("userid"), 10, 64)
+
+	fmt.Println("client_userid")
+	fmt.Println(client_userid)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	type Thread struct {
+		Post      models.Post
+		User      models.User_Post
+		IsFavo    bool
+		ImageURLs []string
+	}
+	threads := []Thread{}
+	for _, post := range posts {
+		thread := Thread{}
+		thread.Post = post
+		u := models.User{}
+		err := models.DB.Where("id=?", post.UserId).First(&u).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		err = models.DB.Model(&models.Favo{}).Where("post_id=?", post.ID).Count(&thread.Post.FavoNum).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		thread.User.Username = u.Username
+		thread.User.UserTag = u.UserTag
+		thread.User.ImgPath = u.ImgPath
+		thread.User.ID = u.ID
+		thread.ImageURLs = models.GetImageURL(int(thread.Post.ID))
+		thread.IsFavo = models.IsFavo(uint(client_userid), post.ID)
+		threads = append(threads, thread)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"threads": threads})
+}
+func getallmypost(c *gin.Context) {
+	posts, err := models.GetAllPost()
+	client_userid, _ := strconv.ParseUint(c.Query("userid"), 10, 64)
+
+	fmt.Println("client_userid")
+	fmt.Println(client_userid)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	type Thread struct {
+		Post      models.Post
+		User      models.User_Post
+		IsFavo    bool
+		ImageURLs []string
+	}
+	threads := []Thread{}
+	for _, post := range posts {
+		thread := Thread{}
+		thread.Post = post
+		u := models.User{}
+		err := models.DB.Where("id=?", post.UserId).First(&u).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		err = models.DB.Model(&models.Favo{}).Where("post_id=?", post.ID).Count(&thread.Post.FavoNum).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		thread.User.Username = u.Username
+		thread.User.UserTag = u.UserTag
+		thread.User.ImgPath = u.ImgPath
+		thread.User.ID = u.ID
+		thread.ImageURLs = models.GetImageURL(int(thread.Post.ID))
+		thread.IsFavo = models.IsFavo(uint(client_userid), post.ID)
+		threads = append(threads, thread)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"threads": threads})
+}
+
+func getUser(c *gin.Context) {
+	id_s := c.Query("id") // URLパラメータからidを取得する
+	id, _ := strconv.Atoi(id_s)
+	user := models.GetOtherUser(id)
+	c.JSON(http.StatusOK, gin.H{"user": user})
+
 }
 
 func main() {
 	router := gin.Default()
+
+	models.ConnectDataBase()
+	router.Use(cors.New(cors.Config{
+		// アクセスを許可したいアクセス元
+		AllowOrigins: []string{
+			"http://localhost:3000",
+		},
+		// アクセスを許可したいHTTPメソッド(以下の例だとPUTやDELETEはアクセスできません)
+		AllowMethods: []string{
+			"POST",
+			"GET",
+		},
+		// 許可したいHTTPリクエストヘッダ
+		AllowHeaders: []string{
+			"Access-Control-Allow-Credentials",
+			"Access-Control-Allow-Headers",
+			"Access-Control-Allow-Origin",
+			"Content-Type",
+			"Content-Length",
+			"Accept-Encoding",
+			"Authorization",
+		},
+		// cookieなどの情報を必要とするかどうか
+		AllowCredentials: false,
+		// preflightリクエストの結果をキャッシュする時間
+
+	}))
+
+	public := router.Group("/api")
+	// models.AddFavo(2, 1)
+	fmt.Println("firebase getpostimg")
+	protected := router.Group("/api/admin")
+	protected.Use(middlewares.JwtAuthMiddleware())
+	public.POST("/register", controllers.Register)
+	public.POST("/login", controllers.Login)
 	router.GET("/getpost", getpost)
-	router.GET("/createpost", createpost)
-	router.GET("/createcomment", createcomment)
+	protected.GET("/user", controllers.CurrentUser)
+	router.POST("/createpost", models.Createpost)
+	router.POST("/updateuser", updateUser)
+	router.GET("/user", getUser)
+	// router.GET("/createcomment", createcomment)
+	router.GET("/getallpost", getallpost)
+	router.GET("/getallmypost", getallmypost)
+	router.POST("/addfavo", models.AddFavo)
+	router.POST("/deletefavo", models.DeleteFavo)
 	router.Run("localhost:8080")
 }
