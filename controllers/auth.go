@@ -23,7 +23,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	user := models.User{Username: input.Username, Password: input.Password, UserTag: uuid.New().String()}
+	user := models.User{Username: input.Username, Password: input.Password, UserTag: uuid.New().String(), Profile: "よろしくお願いします"}
 	fmt.Println(user)
 	user.BeforeSave()
 	user, err := user.Save()

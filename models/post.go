@@ -50,6 +50,21 @@ func GetAllPost() (posts []Post, err error) {
 	return
 
 }
+func GetAllMyPost(myID int) (posts []Post, err error) {
+	// p := []Post{}
+	err = DB.Limit(10).Where("id=?", myID).Find(&posts).Error
+	// for p, _ := range posts {
+	// 	fmt.Println(p)
+	// }
+
+	// for _, post := range p {
+	// 	Commnets := []Comment{}
+	// 	DB.Where("post_id=?", post.ID).Find(&Commnets)
+	// 	post.Comments = append(post.Comments, Commnets...)
+	// 	posts = append(posts, post)
+	// }
+	return
+}
 
 func Createpost(c *gin.Context) {
 	type Input struct {
