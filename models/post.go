@@ -52,7 +52,7 @@ func GetAllPost() (posts []Post, err error) {
 }
 func GetAllMyPost(myID int) (posts []Post, err error) {
 	// p := []Post{}
-	err = DB.Limit(10).Where("id=?", myID).Find(&posts).Error
+	err = DB.Limit(10).Where("user_id=?", myID).Find(&posts).Error
 	// for p, _ := range posts {
 	// 	fmt.Println(p)
 	// }
