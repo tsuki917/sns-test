@@ -110,11 +110,8 @@ func getallpost(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"threads": threads})
 }
 func getallmypost(c *gin.Context) {
-	posts, err := models.GetAllPost()
 	client_userid, _ := strconv.ParseUint(c.Query("userid"), 10, 64)
-
-	fmt.Println("client_userid")
-	fmt.Println(client_userid)
+	posts, err := models.GetAllMyPost(int(client_userid))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -132,6 +129,7 @@ func getallmypost(c *gin.Context) {
 		thread.Post = post
 		u := models.User{}
 		err := models.DB.Where("id=?", post.UserId).First(&u).Error
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
